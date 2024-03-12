@@ -30,7 +30,7 @@ async function updateAllMeters(dataReader, metersToUpdate, conn) {
 					if (err.options !== undefined && err.options.ipAddress !== undefined) {
 						ipAddress = err.options.ipAddress;
 					}
-					log.error(`ERROR ON REQUEST TO METER ${ipAddress}, ${err.message}`, err);
+					log.error(`Get meter data failed on host ${err.request.host} with err statusMessage of "${err.request.res.statusMessage}" and  err message of "${err.message}" with err of: `, err);
 					return null;
 				})));
 		log.info('Update finished');
