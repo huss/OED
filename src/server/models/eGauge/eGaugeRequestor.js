@@ -128,7 +128,7 @@ class EgaugeRequestor {
 		// The meter endTimestamp is stored as a string so we need to parse and then convert to UTC.
 		const endTimestampTz = moment.parseZone(this.meter.endTimestamp, true);
 		// Note this modifies the endTimestampTz object.
-		const lastTimestamp = moment.parseZone(endTimestampTz.tz('UTC', true));
+		const lastTimestamp = moment.parseZone(endTimestampTz).tz('UTC', true);
 		let startTimestamp;
 		// The timezone we interpret the readings in.
 		const timezoneUse = await meterTimezone(this.meter);
@@ -150,9 +150,13 @@ class EgaugeRequestor {
 		} else {
 			// This takes the date/time in the database on the meter, sets its timezone to be the one desired with
 			// the same date/time and finally converts it to a unit timestamp. This will be the time to start
-			// getting the meter readings.
-			startTimestamp = moment(lastTimestamp).tz(timezoneUse, true).unix();
+			// getting the meter readings. Add the timeStep since want the next reading.
+			startTimestamp = moment(lastTimestamp).tz(timezoneUse, true).add(timeStep, 'seconds').unix();
 		}
+		// If soh is at the time of the last reading (second request in less than one hour) the the eGauge meter
+		// will return an error such as:
+		// No data received/stored in getting eGauge readings due to error: Failed to parse time value `1710368100:900:soh'
+		// This should not happen normally so decided okay to just log the error.
 		return this.getMeterReadingsBetweenInterval(startTimestamp, endTimestamp, timeStep, timezoneUse);
 	}
 

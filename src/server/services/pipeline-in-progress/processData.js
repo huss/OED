@@ -201,13 +201,13 @@ async function processData(rows, meterID, timeSort = TimeSortTypesJS.increasing,
 			endTimestamp = moment.parseZone(endTimestampTz.clone()).tz('UTC', true);
 		}
 		else {
-			// If the start date/time from the reading's timezone. Next, we put it
+			// Get the start date/time from the reading's timezone. Next, we put it
 			// into a moment reading has a timezone offset associated with it then we want to honor it by using parseZone.
 			// However the database uses UTC and has no timezone offset so we need to get the reading into UTC.
 			// OED plots readings as the date/time it was acquired independent of the timezone. For example, if the reading is
 			// 2021-06-01 00:00:00-05:00 then the database should store it as 2021-06-01 00:00:00.
 			// Thus, we want in a timezone aware way so the UTC sticks and there is no shift of time.
-			// This setup should work no matter want the timezone is on the server.
+			// This setup should work no matter what the timezone is on the server.
 			// Get the reading into moment in a timezone aware way. Note will assume UTC if no timezone in the string.
 			startTimestampTz = moment.parseZone(rows[index][1], undefined, true);
 			if (!startTimestampTz.isValid() && relaxedParsing) {
@@ -678,6 +678,7 @@ async function processData(rows, meterID, timeSort = TimeSortTypesJS.increasing,
  * Generally used to see if a reading is the initial value stored in the DB for date/time to know if you are
  * working with this special reading.
  * @param {moment} t moment date/time to compare against the first ever possible moment date/time which may exist
+ * @returns true if t is same as initial value and false otherwise
  */
 function isFirst(t) {
 	return t.isSame(E0);
