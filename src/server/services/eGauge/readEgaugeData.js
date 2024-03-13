@@ -54,7 +54,10 @@ async function readEgaugeData(meter, conn) {
 		conn = conn,
 		// eGauge uses Unix timestamps and deals with DST.
 		honorDst = true,
-		relaxedParsing = false
+		relaxedParsing = false,
+		// Treat valued of less than -50 as zero.
+		// TODO Should consider the unit and only do when appropriate. This is for W.
+		negativeToZero = -50
 	);
 }
 

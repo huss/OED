@@ -48,11 +48,12 @@ const E0 = moment(0).utc()
  * @param {array} conn the connection to the database
  * @param {boolean} honorDst true if this meter's times shift when crossing DST, false otherwise (default false)
  * @param {boolean} relaxedParsing true if the parsing of readings allows for non-standard formats, default if false since this can give bad dates/times.
+ * @param {number} negativeToZero If a reading is less than zero but larger than this value then reading changed to zero. If zero or more then readings are not impacted.
  * @returns {object[]} {array of readings accepted, true if all readings accepted and false otherwise, all messages from processing}
  */
 async function processData(rows, meterID, timeSort = TimeSortTypesJS.increasing, readingRepetition, isCumulative, cumulativeReset,
 	resetStart = '00:00:00.000', resetEnd = '23:59:99.999', readingGap = 0, readingLengthVariation = 0, isEndTime = false,
-	conditionSet, conn, honorDst = false, relaxedParsing = false) {
+	conditionSet, conn, honorDst = false, relaxedParsing = false, negativeToZero = 0.0) {
 	// Holds all the warning message to pass back to inform user.
 	// Note they use basic HTML because the messages can be long/complex and it was felt it would be easy to put it into a web browser
 	// to make them easier to read.
@@ -283,6 +284,14 @@ async function processData(rows, meterID, timeSort = TimeSortTypesJS.increasing,
 				return { result, isAllReadingsOk, msgTotal };
 			}
 			meter.reading = meterReading;
+		}
+		// Some meters report small negative values when they really are zero. An example is eGauge
+		// where the kW readings can do this. This logs the event and converts to zero if requested.
+		if (meterReading < 0 && meterReading > negativeToZero) {
+			errMsg += 'For meter ' + meterName + ': Error parsing Reading #' + row(index, isAscending, rows.length) +
+			' The reading value provided of ' + meterReading +
+			' is negative but greater than threshold of ' + negativeToZero + ' so reading replaced with zero.<br>';
+			meterReading = 0;
 		}
 		// This value is used when logging messages if done before the last section.
 		const logReading = new Reading(meterID, meterReading, startTimestamp, endTimestamp);

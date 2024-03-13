@@ -256,7 +256,9 @@ async function uploadReadings(req, res, filepath, conn) {
 		conditionSet,
 		conn,
 		shouldHonorDst,
-		shouldRelaxedParsing
+		shouldRelaxedParsing,
+		// TODO Once the admin can set negativeToZero then that value should be used.
+		0.0
 	); // load csv data
 }
 

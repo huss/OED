@@ -48,13 +48,15 @@ async function loadCsvInput(
 	conditionSet,
 	conn,
 	honorDst,
-	relaxedParsing
+	relaxedParsing,
+	negativeToZero
 ) {
 	try {
 		const dataRows = await readCsv(filePath, headerRow);
 		return loadArrayInput(dataRows, meterID, mapRowToModel, timeSort, readingRepetition,
 			isCumulative, cumulativeReset, cumulativeResetStart, cumulativeResetEnd,
-			readingGap, readingLengthVariation, isEndOnly, shouldUpdate, conditionSet, conn, honorDst, relaxedParsing);
+			readingGap, readingLengthVariation, isEndOnly, shouldUpdate, conditionSet, conn,
+			honorDst, relaxedParsing, negativeToZero);
 	} catch (err) {
 		log.error(`Error updating meter ${meterID} with data from ${filePath}: ${err}`, err);
 	}
