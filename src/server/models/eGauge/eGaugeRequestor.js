@@ -183,6 +183,9 @@ class EgaugeRequestor {
 		const REGISTER_NAME = this.registerName;
 		const res = await this.get(`${this.apiUrl}/register/?rate&format=json&time=now`);
 		const register = res.data.registers.filter(reg => reg.name === REGISTER_NAME);
+		if (register.length === 0) {
+			log.error(`It appear the register ${REGISTER_NAME} does not exist for meter ${this.meter.name}`);
+		}
 		const REGISTER_ID = register[0].idx;
 		this.registerId = REGISTER_ID;
 	}
