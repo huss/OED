@@ -17,11 +17,24 @@ class EgaugeRequestor {
 	 */
 	constructor(meter) {
 		// Information expected by the eGauge API and needed by OED.
+		// This should be similar to paramOne[0] without final ? but do this to be safe.
 		const url = new URL(`https://${meter.url}`);
 		this.apiUrl = `${url.origin}/api`; // can we add an ending slash??
-		this.username = url.searchParams.get('username');
-		this.password = url.searchParams.get('password');
-		this.registerName = url.searchParams.get('registerName');
+		// TODO Think about a better way to pass in the needed values, esp. since
+		// this assumes the URL is in the exact, right format.
+		// This assumes the URL looks like:
+		// .*registerName=.*&username=.*&password=.*
+		// Where the second .* is the registerName, the third .* is username and the fourth .* is the password.
+		// Example: https://egauge12345.egaug.es/api?registerName=x & y&username=myUser&password=myPassword
+		// will give registerName as x & y, username as myUser and password as myPassword.
+		// Note it can deal with & and other special HTML characters in these fields unlike the earlier code.
+		// TODO Could check that the number of items is always 2 on split and nothing after password (that is tricky).
+		const paramOne = `${meter.url}`.split('registerName=');
+		const registerName = paramOne[1].split('&username=');
+		const username = registerName[1].split('&password=');
+		this.registerName = registerName[0];
+		this.username = username[0];
+		this.password = username[1];
 		this.meter = meter;
 		this.jwt = undefined;
 		this.registerId = undefined;
@@ -83,7 +96,7 @@ class EgaugeRequestor {
 		if (data.error !== undefined) {
 			// An error can occur if the time range is improper. For example, if the endTimestamp is
 			// after the startTimestamp. In this case no readings are recorded.
-			log.error("No data received/stored in getting eGauge readings due to error: " + data.error);
+			log.error("No data received/stored in getting eGauge readings for meter " + this.meter.name + " due to error: " + data.error);
 			return [];
 		}
 		const meterReadings = [];
@@ -155,7 +168,7 @@ class EgaugeRequestor {
 		}
 		// If soh is at the time of the last reading (second request in less than one hour) the the eGauge meter
 		// will return an error such as:
-		// No data received/stored in getting eGauge readings due to error: Failed to parse time value `1710368100:900:soh'
+		// Failed to parse time value `1710368100:900:soh'
 		// This should not happen normally so decided okay to just log the error.
 		return this.getMeterReadingsBetweenInterval(startTimestamp, endTimestamp, timeStep, timezoneUse);
 	}
