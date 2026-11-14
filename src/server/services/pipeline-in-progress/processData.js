@@ -530,7 +530,6 @@ async function processData(rows, meterID, timeSort = MeterTimeSortTypesJS.increa
 			// what is received since subtracting the previous negative reading if actually use it.
 
 			// To handle net cumulative readings which are negative.
-			// TODO Need to figure out way to deal with meters with negative readings.
 			// if meterReading is negative then cumulative check that the times fall within an acceptable reset range.
 			// If not, then use the negative value as a reading.
 			// Note this will be false if not cumulative given check above that need cumulative with reset.
