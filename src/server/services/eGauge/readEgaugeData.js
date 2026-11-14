@@ -59,8 +59,7 @@ async function readEgaugeData(meter, conn) {
 		useMeterZone = false,
 		warnOnCumulativeReset = false,
 		useMeterFrequency = false,
-		useMeterFrequencyVariation = 0,
-		treatAsZero = 0
+		useMeterFrequencyVariation = 0
 	);
 }
 
