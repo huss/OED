@@ -36,7 +36,7 @@ const E0 = moment(0).utc()
  *   'increasing' or 'decreasing'), default 'increasing'
  * @param {number} readingRepetition value is 1 if reading is not duplicated. 2 if repeated twice and so on (such as E-mon D-mon meters)
  * @param {boolean} isCumulative true if the data is cumulative and false otherwise
- * @param {boolean} cumulativeReset true if the cumulative data can reset and false otherwise
+ * @param {boolean} cumulativeReset true if the cumulative data can reset and false otherwise. See treatAsZero as it overrides this for some readings.
  * @param {string} resetStart a string representation in the format "HH:mm:ss.SSS" which represents the start time a cumulativeReset may occur after.
  *    The :ss.SSS can be left off. The default resetStart time is '00:00:00.000'
  * @param {string} resetEnd a string which represents the end time a cumulativeReset may occur before in same format as resetStart.
@@ -61,11 +61,12 @@ const E0 = moment(0).utc()
  * 	The default if false.
  * @param {number} useMeterFrequencyVariation the allowed time variation in seconds above the meter frequency that a reading can deviate when using useMeterFrequency.
  * 	It effectively ignores differences in reading length for the number of seconds indicated. Default is 0.
+ * @param {number} treatAsZero should be a negative value or zero (0) where default is zero (0). If a reading is in the range treatAsZero <= reading < 0 then it will be replaced with zero (0). Note this is tested first before a cumulative reset happens so if the value passes the treatAsZero test then no cumulative reset will occur. If >= 0 then it will not change any readings.
  * @returns {object[]} {array of readings accepted, true if all readings accepted and false otherwise, all messages from processing}
  */
 async function processData(rows, meterID, timeSort = MeterTimeSortTypesJS.increasing, readingRepetition, isCumulative, cumulativeReset,
 	resetStart = '00:00:00.000', resetEnd = '23:59:99.999', readingGap = 0, readingLengthVariation = 0, isEndTime = false,
-	conditionSet, conn, honorDst = false, relaxedParsing = false, useMeterZone = false, warnOnCumulativeReset = false, useMeterFrequency = false, useMeterFrequencyVariation = 0) {
+	conditionSet, conn, honorDst = false, relaxedParsing = false, useMeterZone = false, warnOnCumulativeReset = false, useMeterFrequency = false, useMeterFrequencyVariation = 0, treatAsZero = 0) {
 	// Holds all the warning message to pass back to inform user.
 	// Note they use basic HTML because the messages can be long/complex and it was felt it would be easy to put it into a web browser
 	// to make them easier to read.
@@ -157,11 +158,11 @@ async function processData(rows, meterID, timeSort = MeterTimeSortTypesJS.increa
 	/* The currentReading will represent the current reading being parsed in the csv file. i.e. if index == 1, currentReading = rows[1] where
 	*  rows[1] : {reading_value, startTimestamp, endTimestamp}
 	*  Note that rows[1] may not contain a startTimestamp and may contain only an endTimestamp which must be reflected by
-	*  onlyEndTime == True where we have,
+	*  onlyEndTime == true where it has,
 	*  rows[1] : {reading_value, endTimestamp}
 	* If dealing with decreasing timesort then rows are in the opposite order.
 	*
-	*  On entry there is no previousReading yet so initialize it to be the last reading received and rejected where this value is stored on
+	* On entry there is no previousReading yet so initialize it to be the last reading received and rejected where this value is stored on
 	* the meter in the database. The meter database reading value is set to a special initial date/time so we know if it should not be used.
 	* After a currentReading has been processed that currentReading will become the new prevReading. For example,
 	*
@@ -346,6 +347,16 @@ async function processData(rows, meterID, timeSort = MeterTimeSortTypesJS.increa
 			}
 			meter.reading = meterReading;
 		}
+		// Now that the reading value is settled, deal with treatAsZero. Note this is done after the meter value
+		// was updated because it does not change that value.
+		if (meterReading < 0 && meterReading >= treatAsZero) {
+			// Reading is negative but greater or equal to treatAsZero so reset to zero (0) and add to msg.
+			errMsg += 'For meter ' + meterName + ': Warning on Reading #' + row(index, isAscending, rows.length) +
+				' The reading value provided of ' + meterReading +
+				' is negative but greater than ' + treatAsZero + ' so it is being replaced with zero (0).<br>';
+			log.warn(errMsg);
+			meterReading = 0;
+		}
 		// This value is used when logging messages if done before the last section.
 		const logReading = new Reading(meterID, meterReading, startTimestamp, endTimestamp);
 		if (isCumulative && isFirst(prevReading.endTimestamp)) {
@@ -504,66 +515,25 @@ async function processData(rows, meterID, timeSort = MeterTimeSortTypesJS.increa
 					msReadingGap / 1000 + ' seconds.<br>';
 			}
 		}
-		if (readingOK && isCumulative) {
-			// Reject negative readings for cumulative.
-			// Note one can make the case that we should accept them since we don't automatically exclude negative readings.
-			// The conditionSet could be used instead to catch this if desired. However, we decided that cumulative
-			// normally don't go negative so are excluding these values.
-			// This could be changed by commenting out this block of code. Note that the next reading will be larger than
+		if (readingOK && isCumulative && meterReading < 0) {
+			// OED used to reject negative readings for cumulative but now it allows negative in all cases.
+			// The conditionSet can be used instead to catch this if desired. Note that the next reading will be larger than
 			// what is received since subtracting the previous negative reading if actually use it.
-			if (meterReading2 < 0) {
-				// If the value isCumulative and the prior reading is negative reject because OED cannot accept any negative readings.
-				// You go back by readingRepetition since this is the previous reading.
-				let negRow = row(index, isAscending, rows.length) - readingRepetition + 1;
-				if (negRow < 1) {
-					// The previous reading came from meter not this CSV file.
-					errMsg += 'The last meter reading (logical previous reading) was negative with value ' + meterReading1 +
-						'. With cumulative readings the previous reading cannot be negative so all reading are rejected.<br>';
-				} else {
-					errMsg += '<br>Error parsing Reading #' + negRow +
-						'. Detected a negative value while handling cumulative readings so all reading are rejected.<br>';
-				}
-				errMsg = 'For meter ' + meterName + ': ' + errMsg;
-				log.error(errMsg);
-				errMsg += logStatus(meterName, negRow, prevReading, logReading, timeSort, readingRepetition, isCumulative, cumulativeReset,
-					resetStart, resetEnd, readingGap, readingLengthVariation, isEndTime, honorDst, relaxedParsing, useMeterZone,
-					warnOnCumulativeReset, useMeterFrequency, useMeterFrequencyVariation) + '<br>';
-				({ msgTotal, msgTotalWarning } = appendMsgTotal(msgTotal, errMsg, msgTotalWarning));
-				// This empties the result array. Should be fast and okay with const.
-				result.splice(0, result.length);
-				isAllReadingsOk = false;
-				return { result, isAllReadingsOk, msgTotal };
-			}
+
 			// To handle net cumulative readings which are negative.
 			// TODO Need to figure out way to deal with meters with negative readings.
-			if (meterReading < 0) {
-				// if meterReading is negative then cumulative check that the times fall within an acceptable reset range.
-				// Note this will be false if not cumulative given check above that need cumulative with reset.
-				if (handleCumulativeReset(cumulativeReset, resetStart, resetEnd, startTimestamp)) {
-					// If there is a cumulative reset then the meterReading should always use the canonical current raw reading value.
-					// This means that we assume the reading value reset at the start of the reading or some value will be lost.
-					// We don't really have an alternative to doing this.
-					meterReading = meterReading2;
-					if (warnOnCumulativeReset) {
-						// Log that did this for information.
-						errMsg += 'While handling cumulative data, the current value is less than the previous value within the allowed reset times so' +
-							' the current reading is treated as the correct absolute value. This is normally fine so not considered an error.' + '<br>'
-					}
-				} else {
-					//cumulativeReset is not expected but there is a negative net meter reading so reject all readings.
-					errMsg += ('<br>For meter ' + meterName + ': Error parsing Reading #' + row(index, isAscending, rows.length) +
-						'. Reading value of ' + meterReading2 + ' gives ' +
-						meterReading + ' with error message:<br>A negative meterReading has been detected but either cumulativeReset' +
-						' is not enabled, or the start time and end time of this reading is out of the reset range. Reject all readings.<br>');
-					log.error(errMsg);
-					errMsg += logStatus(meterName, row(index, isAscending, rows.length), prevReading, logReading, timeSort, readingRepetition,
-						isCumulative, cumulativeReset, resetStart, resetEnd, readingGap, readingLengthVariation, isEndTime, honorDst,
-						relaxedParsing, useMeterZone, warnOnCumulativeReset, useMeterFrequency, useMeterFrequencyVariation) + '<br>';
-					({ msgTotal, msgTotalWarning } = appendMsgTotal(msgTotal, errMsg, msgTotalWarning));
-					// This empties the result array. Should be fast and okay with const.
-					result.splice(0, result.length);
-					isAllReadingsOk = false;
-					return { result, isAllReadingsOk, msgTotal };
+			// if meterReading is negative then cumulative check that the times fall within an acceptable reset range.
+			// If not, then use the negative value as a reading.
+			// Note this will be false if not cumulative given check above that need cumulative with reset.
+			if (handleCumulativeReset(cumulativeReset, resetStart, resetEnd, startTimestamp)) {
+				// If there is a cumulative reset then the meterReading should always use the canonical current raw reading value.
+				// This means that we assume the reading value reset at the start of the reading or some value will be lost.
+				// We don't really have an alternative to doing this.
+				meterReading = meterReading2;
+				if (warnOnCumulativeReset) {
+					// Log that did this for information.
+					errMsg += 'While handling cumulative data, the current value is less than the previous value within the allowed reset times so' +
+						' the current reading is treated as the correct absolute value. This is normally fine so not considered an error.' + '<br>'
 				}
 			}
 		}

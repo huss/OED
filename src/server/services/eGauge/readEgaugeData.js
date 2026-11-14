@@ -19,6 +19,7 @@ async function readEgaugeData(meter, conn) {
 	const meterReadings = await requestor.getMeterReadings();
 	await requestor.logout()
 
+	console.log('src/server/services/eGauge/readEgaugeData.js');
 	// Store the readings in the database.
 	await loadArrayInput(dataRows = meterReadings,
 		meterID = meter.id,
@@ -56,7 +57,10 @@ async function readEgaugeData(meter, conn) {
 		honorDst = true,
 		relaxedParsing = false,
 		useMeterZone = false,
-		warnOnCumulativeReset = false
+		warnOnCumulativeReset = false,
+		useMeterFrequency = false,
+		useMeterFrequencyVariation = 0,
+		treatAsZero = 0
 	);
 }
 

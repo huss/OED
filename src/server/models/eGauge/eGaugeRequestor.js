@@ -211,7 +211,6 @@ class EgaugeRequestor {
 	 */
 	async setRegisterId() {
 		const registerName = this.registerName;
-		console.log('setRegisterId RegisterName: ', registerName);
 		// Get register id from the eGauge device.
 		// Earlier there was a plan to track if the register was physical or virtual on the eGauge
 		// device (via registerType on this object). However, eGauge can return all registers and

@@ -34,12 +34,13 @@ const processData = require('./processData');
  */
 async function loadArrayInput(dataRows, meterID, mapRowToModel, timeSort, readingRepetition, isCumulative,
 	cumulativeReset, cumulativeResetStart, cumulativeResetEnd, readingGap, readingLengthVariation, isEndOnly,
-	shouldUpdate, conditionSet, conn, honorDst = false, relaxedParsing = false, useMeterZone = false, warnOnCumulativeReset = false) {
+	shouldUpdate, conditionSet, conn, honorDst = false, relaxedParsing = false, useMeterZone = false, warnOnCumulativeReset = false, useMeterFrequency = false, useMeterFrequencyVariation = 0, treatAsZero = 0) {
 	// Get the reading, then process them for acceptance and finally insert into the DB.
 	readingsArray = dataRows.map(mapRowToModel);
+	// TODO fix up all places using processData or make issue.
 	let { result: readingsToInsert, isAllReadingsOk, msgTotal } = await processData(readingsArray, meterID, timeSort, readingRepetition,
 		isCumulative, cumulativeReset, cumulativeResetStart, cumulativeResetEnd, readingGap, readingLengthVariation, isEndOnly,
-		conditionSet, conn, honorDst, relaxedParsing, useMeterZone, warnOnCumulativeReset);
+		conditionSet, conn, honorDst, relaxedParsing, useMeterZone, warnOnCumulativeReset, useMeterFrequency, useMeterFrequencyVariation, treatAsZero);
 	if (shouldUpdate) {
 		// New readings should replace old ones.
 		await Reading.insertOrUpdateAll(readingsToInsert, conn)
