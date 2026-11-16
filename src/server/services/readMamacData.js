@@ -118,6 +118,7 @@ async function readMamacData(meter, conn) {
 		honorDst = false,
 		relaxedParsing = false,
 		useMeterZone = false
+		// TODO The other newer arguments need to be set. This may be part of more complete solution to setting them.
 	);
 }
 

@@ -127,6 +127,7 @@ async function loadLogfileToReadings(serialNumber, ipAddress, logfile, conn) {
 				relaxedParsing = false,
 				useMeterZone = false,
 				warnOnCumulativeReset = false
+				// TODO The other newer arguments need to be set. This may be part of more complete solution to setting them.
 			);
 		} catch (err) {
 			log.error('Could not insert readings from Obvius logfile.', err);

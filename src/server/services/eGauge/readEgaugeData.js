@@ -19,7 +19,6 @@ async function readEgaugeData(meter, conn) {
 	const meterReadings = await requestor.getMeterReadings();
 	await requestor.logout()
 
-	console.log('src/server/services/eGauge/readEgaugeData.js');
 	// Store the readings in the database.
 	await loadArrayInput(dataRows = meterReadings,
 		meterID = meter.id,
@@ -60,6 +59,7 @@ async function readEgaugeData(meter, conn) {
 		warnOnCumulativeReset = false,
 		useMeterFrequency = false,
 		useMeterFrequencyVariation = 0
+		// TODO The other newer arguments need to be set. This may be part of more complete solution to setting them.
 	);
 }
 

@@ -48,6 +48,8 @@ mocha.describe('PIPELINE: Load data from array', () => {
 			conn,
 			false,
 			false,
+			// TODO The other newer arguments need to be set. This may be part of more complete solution to setting them.
+			// TODO Should also more clearly label each argument so easier to know what each is.
 			false);
 		const result = await Reading.getAllByMeterID(meter.id, conn);
 		expect(result.length).to.equal(5);

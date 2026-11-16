@@ -11,6 +11,7 @@ const processData = require('./processData');
 
 /**
  * Select and process needed values from a matrix and insert into DB.
+ *  @see {@link processData} for more information on parameters.
  * @param {object[[]]} dataRows where each row is defined by mapRowToModel function
  * @param {number} meterID meter id being input
  * @param {function} mapRowToModel a customized function that reorders each row into shape [reading_value, startTimeStamp, endTimeStamp]
@@ -31,8 +32,14 @@ const processData = require('./processData');
  * @param {boolean} useMeterZone true if the readings are switched to the time zone (meter then site then server)), default if false.
  *   Should only be true if honorDST is true and reading does not have proper time zone information.
  * @param {boolean} warnOnCumulativeReset true if a warning is shown for each reset with cumulative data. cumulative must be true. default is false.
- * TODO This is missing new parameters for pipeline in JSDoc.
- * @returns {object[]} {whether readings were all process (true) or false, all the messages from processing the readings as a string}
+* @param {boolean} useMeterFrequency true if isEndTime is true then any reading found with a different reading length that is longer than the meter
+ * 	frequency will make the start time by the end time minus the meter reading frequency.
+ * 	The default if false.
+ * @param {number} useMeterFrequencyVariation the allowed time variation in seconds above the meter frequency that a reading can deviate when using useMeterFrequency.
+ * 	It effectively ignores differences in reading length for the number of seconds indicated. Default is 0.
+ * @param {string} lang Language code for translated header, defaults to English.
+ * @param {number} treatAsZero should be a negative value or zero (0) where default is zero (0). 
+  * @returns {object[]} {whether readings were all process (true) or false, all the messages from processing the readings as a string}
  */
 async function loadArrayInput(dataRows, meterID, mapRowToModel, timeSort, readingRepetition, isCumulative,
 	cumulativeReset, cumulativeResetStart, cumulativeResetEnd, readingGap, readingLengthVariation, isEndOnly,
